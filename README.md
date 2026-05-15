@@ -39,7 +39,7 @@ A web-based machine learning application that predicts student academic performa
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
+git clone https://github.com/dummyAIserver/Student-Performance-Predictor-1.3.1.git
 cd Student-Performance-Predictor-1.3.1
 ```
 
