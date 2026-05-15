@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Student Performance Predictor</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            height: 100%;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        .stat-card .icon.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stat-card .icon.success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: white;
+        }
+        .stat-card .icon.info {
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+        }
+        .stat-card .icon.warning {
+            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+            color: white;
+        }
+        .stat-card h3 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-graduation-cap me-2"></i>
+                <span class="d-none d-sm-inline">Student Performance Predictor</span>
+                <span class="d-inline d-sm-none">SP Predictor</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('main.home') }}">
+                        <i class="fas fa-home me-1"></i>
+                        Predict
+                    </a>
+                    <a class="nav-link" href="{{ url_for('main.history') }}">
+                        <i class="fas fa-history me-1"></i>
+                        History
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.can_view_all_predictions() %}
+                        <a class="nav-link active" href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-chart-line me-1"></i>
+                            Dashboard
+                        </a>
+                        {% endif %}
+                        <a class="nav-link" href="{{ url_for('auth.profile') }}">
+                            <i class="fas fa-user me-1"></i>
+                            {{ current_user.username }}
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                            <i class="fas fa-sign-out-alt me-1"></i>
+                            Logout
+                        </a>
+                    {% else %}
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i>
+                            Login
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.register') }}">
+                            <i class="fas fa-user-plus me-1"></i>
+                            Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chart-line me-3"></i>Analytics Dashboard</h1>
+                    <p class="mb-0">View comprehensive analytics and insights about student performance predictions</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <span class="badge bg-light text-dark fs-6">
+                        <i class="fas fa-user-tag me-2"></i>{{ current_user.role.title() }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'danger' or category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-4">
+                <div class="stat-card">
+                    <div class="icon primary">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 id="stat-total">-</h3>
+                    <p class="text-muted mb-0">Total Predictions</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stat-card">
+                    <div class="icon success">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 id="stat-average">-</h3>
+                    <p class="text-muted mb-0">Average Score</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stat-card">
+                    <div class="icon info">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <h3 id="stat-highest">-</h3>
+                    <p class="text-muted mb-0">Highest Score</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stat-card">
+                    <div class="icon warning">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <h3 id="stat-lowest">-</h3>
+                    <p class="text-muted mb-0">Lowest Score</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h4 class="mb-4">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>
+                        Score Distribution
+                    </h4>
+                    <div class="chart-container">
+                        <div class="loading-overlay" id="loading-score">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <canvas id="scoreChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h4 class="mb-4">
+                        <i class="fas fa-chart-pie me-2 text-success"></i>
+                        Grade Distribution
+                    </h4>
+                    <div class="chart-container">
+                        <div class="loading-overlay" id="loading-grade">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <canvas id="gradeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h4 class="mb-4">
+                        <i class="fas fa-chart-area me-2 text-info"></i>
+                        Attendance vs Predicted Marks
+                    </h4>
+                    <div class="chart-container">
+                        <div class="loading-overlay" id="loading-scatter">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h4 class="mb-4">
+                        <i class="fas fa-chart-doughnut me-2 text-warning"></i>
+                        Performance Categories
+                    </h4>
+                    <div class="chart-container">
+                        <div class="loading-overlay" id="loading-performance">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-bolt me-2 text-warning"></i>
+                            Quick Actions
+                        </h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{{ url_for('main.home') }}" class="btn btn-primary">
+                                <i class="fas fa-magic me-2"></i>New Prediction
+                            </a>
+                            <a href="{{ url_for('main.history', all='true') }}" class="btn btn-info">
+                                <i class="fas fa-history me-2"></i>View All History
+                            </a>
+                            <a href="{{ url_for('main.export_excel') }}" class="btn btn-success">
+                                <i class="fas fa-file-excel me-2"></i>Export Excel
+                            </a>
+                            <a href="{{ url_for('main.export_pdf') }}" class="btn btn-danger">
+                                <i class="fas fa-file-pdf me-2"></i>Export PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Chart configuration
+        Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif";
+        Chart.defaults.color = '#666';
+
+        let scoreChart, gradeChart, scatterChart, performanceChart;
+        const apiAnalyticsUrl = "{{ url_for('main.api_analytics') }}";
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(apiAnalyticsUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Error loading analytics:', data.error);
+                    return;
+                }
+
+                // Update stats
+                document.getElementById('stat-total').textContent = data.total_predictions;
+                document.getElementById('stat-average').textContent = data.average_score;
+                document.getElementById('stat-highest').textContent = data.highest_score;
+                document.getElementById('stat-lowest').textContent = data.lowest_score;
+
+                // Remove loading overlays
+                document.querySelectorAll('.loading-overlay').forEach(el => el.style.display = 'none');
+
+                // Create charts
+                createScoreChart(data.score_distribution);
+                createGradeChart(data.grade_distribution);
+                createScatterChart(data.attendance_vs_marks);
+                createPerformanceChart(data.performance_distribution);
+
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+        }
+
+        function createScoreChart(distribution) {
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            scoreChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: distribution.labels,
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: distribution.data,
+                        backgroundColor: [
+                            'rgba(244, 67, 54, 0.7)',
+                            'rgba(255, 152, 0, 0.7)',
+                            'rgba(255, 235, 59, 0.7)',
+                            'rgba(76, 175, 80, 0.7)',
+                            'rgba(33, 150, 243, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(244, 67, 54, 1)',
+                            'rgba(255, 152, 0, 1)',
+                            'rgba(255, 235, 59, 1)',
+                            'rgba(76, 175, 80, 1)',
+                            'rgba(33, 150, 243, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createGradeChart(distribution) {
+            const ctx = document.getElementById('gradeChart').getContext('2d');
+            const grades = ['A+', 'A', 'B', 'C', 'D', 'F'];
+            const data = grades.map(g => distribution[g] || 0);
+            const colors = [
+                'rgba(76, 175, 80, 0.8)',   // A+ - Green
+                'rgba(139, 195, 74, 0.8)',  // A - Light Green
+                'rgba(33, 150, 243, 0.8)',  // B - Blue
+                'rgba(255, 193, 7, 0.8)',   // C - Yellow
+                'rgba(255, 152, 0, 0.8)',   // D - Orange
+                'rgba(244, 67, 54, 0.8)'    // F - Red
+            ];
+
+            gradeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: grades,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createScatterChart(data) {
+            const ctx = document.getElementById('scatterChart').getContext('2d');
+            scatterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Students',
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Attendance: ${context.parsed.x}%, Marks: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Attendance (%)'
+                            },
+                            min: 0,
+                            max: 100
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Predicted Marks'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPerformanceChart(distribution) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const labels = ['Excellent', 'Good', 'Average', 'Needs Improvement'];
+            const data = labels.map(l => distribution[l] || 0);
+            const colors = [
+                'rgba(76, 175, 80, 0.8)',   // Excellent
+                'rgba(33, 150, 243, 0.8)',  // Good
+                'rgba(255, 193, 7, 0.8)',   // Average
+                'rgba(244, 67, 54, 0.8)'     // Needs Improvement
+            ];
+
+            performanceChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load analytics on page load
+        document.addEventListener('DOMContentLoaded', loadAnalytics);
+    </script>
+</body>
+</html>

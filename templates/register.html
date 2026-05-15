@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Student Performance Predictor</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .auth-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        @media (max-width: 575.98px) {
+            .auth-container {
+                padding: 10px;
+            }
+            .auth-card {
+                padding: 25px 20px;
+                border-radius: 12px;
+                max-width: 100%;
+            }
+            .auth-logo i {
+                font-size: 40px;
+            }
+            .auth-logo h2 {
+                font-size: 1.5rem;
+            }
+            .form-control, .form-select {
+                font-size: 16px; /* Prevents iOS zoom */
+            }
+        }
+
+        @media (max-width: 359.98px) {
+            .auth-card {
+                padding: 20px 15px;
+            }
+            .auth-logo h2 {
+                font-size: 1.3rem;
+            }
+        }
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .auth-logo i {
+            font-size: 60px;
+            color: #667eea;
+        }
+        .auth-logo h2 {
+            margin-top: 15px;
+            color: #333;
+            font-weight: 600;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-auth {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            width: 100%;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        .auth-links {
+            text-align: center;
+            margin-top: 25px;
+        }
+        .auth-links a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+        .input-group-text {
+            background: #f8f9fa;
+            border-right: none;
+        }
+        .form-control {
+            border-left: none;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-right: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .role-badge:hover {
+            transform: translateY(-2px);
+        }
+        .role-badge.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .role-student {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .role-teacher {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        .role-admin {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <i class="fas fa-user-plus"></i>
+                <h2>Create Account</h2>
+                <p class="text-muted">Join Student Performance Predictor</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'exclamation-circle' if category == 'danger' or category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                {% if csrf_token %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endif %}
+                
+                <div class="form-group mb-3">
+                    <label class="form-label">
+                        <i class="fas fa-user me-2 text-muted"></i>Username
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" name="username" id="username" value="{{ username if username else '' }}" placeholder="Choose a username" required>
+                        <span class="input-group-text bg-transparent border-0" id="usernameStatus" style="display: none;">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </span>
+                    </div>
+                    <small class="form-text text-muted" id="usernameHelp">Only letters, numbers, and underscores allowed</small>
+                    <div class="invalid-feedback" id="usernameError"></div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">
+                        <i class="fas fa-envelope me-2 text-muted"></i>Email
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" name="email" id="email" value="{{ email if email else '' }}" placeholder="Enter your email" required>
+                        <span class="input-group-text bg-transparent border-0" id="emailStatus" style="display: none;">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </span>
+                    </div>
+                    <small class="form-text text-muted" id="emailHelp"></small>
+                    <div class="invalid-feedback" id="emailError"></div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">
+                        <i class="fas fa-lock me-2 text-muted"></i>Password
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" name="password" id="password" placeholder="Create password (min 6 chars)" required minlength="6">
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="fas fa-eye" id="passwordIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">
+                        <i class="fas fa-lock me-2 text-muted"></i>Confirm Password
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" name="confirm_password" id="confirmPassword" placeholder="Confirm your password" required>
+                        <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                            <i class="fas fa-eye" id="confirmPasswordIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="form-label">
+                        <i class="fas fa-user-tag me-2 text-muted"></i>Select Role
+                    </label>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <label class="role-badge role-student {{ 'selected' if not role or role == 'student' else '' }}">
+                            <input type="radio" name="role" value="student" {{ 'checked' if not role or role == 'student' else '' }} class="d-none">
+                            <i class="fas fa-user-graduate me-1"></i>Student
+                        </label>
+                        <label class="role-badge role-teacher {{ 'selected' if role == 'teacher' else '' }}">
+                            <input type="radio" name="role" value="teacher" {{ 'checked' if role == 'teacher' else '' }} class="d-none">
+                            <i class="fas fa-chalkboard-teacher me-1"></i>Teacher
+                        </label>
+                        <label class="role-badge role-admin {{ 'selected' if role == 'admin' else '' }}">
+                            <input type="radio" name="role" value="admin" {{ 'checked' if role == 'admin' else '' }} class="d-none">
+                            <i class="fas fa-user-shield me-1"></i>Admin
+                        </label>
+                    </div>
+                    <small class="form-text text-muted mt-2 d-block">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Teacher/Admin accounts require admin approval on first registration
+                    </small>
+                </div>
+
+                <button type="submit" class="btn btn-auth">
+                    <i class="fas fa-user-plus me-2"></i>Create Account
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a></p>
+                <p class="mt-2"><a href="{{ url_for('main.home') }}"><i class="fas fa-home me-1"></i>Back to Home</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Role selection styling
+        document.querySelectorAll('.role-badge').forEach(badge => {
+            badge.addEventListener('click', function() {
+                document.querySelectorAll('.role-badge').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                this.querySelector('input').checked = true;
+            });
+        });
+
+        // Password visibility toggle for password field
+        const togglePassword = document.getElementById('togglePassword');
+        const password = document.getElementById('password');
+        const passwordIcon = document.getElementById('passwordIcon');
+
+        // Initially hide the toggle button
+        togglePassword.style.display = 'none';
+
+        // Show toggle button when user starts typing
+        password.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                togglePassword.style.display = 'block';
+            } else {
+                togglePassword.style.display = 'none';
+            }
+        });
+
+        // Hide toggle button when field is not focused and empty
+        password.addEventListener('blur', function() {
+            if (this.value.length === 0) {
+                togglePassword.style.display = 'none';
+            }
+        });
+
+        togglePassword.addEventListener('click', function() {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            
+            // Toggle icon
+            if (type === 'text') {
+                passwordIcon.classList.remove('fa-eye');
+                passwordIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordIcon.classList.remove('fa-eye-slash');
+                passwordIcon.classList.add('fa-eye');
+            }
+        });
+
+        // Password visibility toggle for confirm password field
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const confirmPasswordIcon = document.getElementById('confirmPasswordIcon');
+
+        // Initially hide the toggle button
+        toggleConfirmPassword.style.display = 'none';
+
+        // Show toggle button when user starts typing
+        confirmPassword.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                toggleConfirmPassword.style.display = 'block';
+            } else {
+                toggleConfirmPassword.style.display = 'none';
+            }
+        });
+
+        // Hide toggle button when field is not focused and empty
+        confirmPassword.addEventListener('blur', function() {
+            if (this.value.length === 0) {
+                toggleConfirmPassword.style.display = 'none';
+            }
+        });
+
+        toggleConfirmPassword.addEventListener('click', function() {
+            const type = confirmPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            confirmPassword.setAttribute('type', type);
+            
+            // Toggle icon
+            if (type === 'text') {
+                confirmPasswordIcon.classList.remove('fa-eye');
+                confirmPasswordIcon.classList.add('fa-eye-slash');
+            } else {
+                confirmPasswordIcon.classList.remove('fa-eye-slash');
+                confirmPasswordIcon.classList.add('fa-eye');
+            }
+        });
+
+        // Real-time username availability check
+        const usernameInput = document.getElementById('username');
+        const usernameStatus = document.getElementById('usernameStatus');
+        const usernameHelp = document.getElementById('usernameHelp');
+        let usernameTimeout;
+
+        usernameInput.addEventListener('input', function() {
+            const username = this.value.trim();
+            
+            // Clear previous timeout
+            clearTimeout(usernameTimeout);
+            
+            // Hide status if empty
+            if (username.length === 0) {
+                usernameStatus.style.display = 'none';
+                usernameInput.classList.remove('is-valid', 'is-invalid');
+                usernameHelp.textContent = 'Only letters, numbers, and underscores allowed';
+                usernameHelp.className = 'form-text text-muted';
+                return;
+            }
+            
+            // Wait 500ms after user stops typing
+            usernameTimeout = setTimeout(function() {
+                if (username.length < 3) {
+                    usernameStatus.style.display = 'none';
+                    usernameInput.classList.remove('is-valid', 'is-invalid');
+                    return;
+                }
+                
+                // Check availability via AJAX
+                fetch(`/auth/check-username?username=${encodeURIComponent(username)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        usernameStatus.style.display = 'block';
+                        
+                        if (data.available) {
+                            // Available
+                            usernameStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                            usernameInput.classList.remove('is-invalid');
+                            usernameInput.classList.add('is-valid');
+                            usernameHelp.textContent = data.message;
+                            usernameHelp.className = 'form-text text-success';
+                        } else {
+                            // Not available
+                            usernameStatus.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                            usernameInput.classList.remove('is-valid');
+                            usernameInput.classList.add('is-invalid');
+                            usernameHelp.textContent = data.message;
+                            usernameHelp.className = 'form-text text-danger';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking username:', error);
+                    });
+            }, 500);
+        });
+
+        // Real-time email availability check
+        const emailInput = document.getElementById('email');
+        const emailStatus = document.getElementById('emailStatus');
+        const emailHelp = document.getElementById('emailHelp');
+        let emailTimeout;
+
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            
+            // Clear previous timeout
+            clearTimeout(emailTimeout);
+            
+            // Hide status if empty
+            if (email.length === 0) {
+                emailStatus.style.display = 'none';
+                emailInput.classList.remove('is-valid', 'is-invalid');
+                emailHelp.textContent = '';
+                return;
+            }
+            
+            // Wait 500ms after user stops typing
+            emailTimeout = setTimeout(function() {
+                // Basic email format check
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(email)) {
+                    emailStatus.style.display = 'none';
+                    emailInput.classList.remove('is-valid', 'is-invalid');
+                    return;
+                }
+                
+                // Check availability via AJAX
+                fetch(`/auth/check-email?email=${encodeURIComponent(email)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        emailStatus.style.display = 'block';
+                        
+                        if (data.available) {
+                            // Available
+                            emailStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                            emailInput.classList.remove('is-invalid');
+                            emailInput.classList.add('is-valid');
+                            emailHelp.textContent = data.message;
+                            emailHelp.className = 'form-text text-success';
+                        } else {
+                            // Not available
+                            emailStatus.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                            emailInput.classList.remove('is-valid');
+                            emailInput.classList.add('is-invalid');
+                            emailHelp.textContent = data.message;
+                            emailHelp.className = 'form-text text-danger';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking email:', error);
+                    });
+            }, 500);
+        });
+    </script>
+</body>
+</html>

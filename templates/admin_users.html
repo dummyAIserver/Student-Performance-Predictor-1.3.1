@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Student Performance Predictor</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        .users-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .users-table {
+            margin-bottom: 0;
+        }
+        .users-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .users-table th {
+            font-weight: 600;
+            border: none;
+            padding: 15px;
+        }
+        .users-table td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .role-student {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .role-teacher {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        .role-admin {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            height: 100%;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        .stat-card .icon.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stat-card h3 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .btn-action {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        .self-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .empty-state i {
+            font-size: 64px;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-graduation-cap me-2"></i>
+                <span class="d-none d-sm-inline">Student Performance Predictor</span>
+                <span class="d-inline d-sm-none">SP Predictor</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('main.home') }}">
+                        <i class="fas fa-home me-1"></i>
+                        Predict
+                    </a>
+                    <a class="nav-link" href="{{ url_for('main.history') }}">
+                        <i class="fas fa-history me-1"></i>
+                        History
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.can_view_all_predictions() %}
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-chart-line me-1"></i>
+                            Dashboard
+                        </a>
+                        {% endif %}
+                        {% if current_user.is_admin() %}
+                        <a class="nav-link active" href="{{ url_for('auth.admin_users') }}">
+                            <i class="fas fa-users-cog me-1"></i>
+                            Users
+                        </a>
+                        {% endif %}
+                        <a class="nav-link" href="{{ url_for('auth.profile') }}">
+                            <i class="fas fa-user me-1"></i>
+                            {{ current_user.username }}
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                            <i class="fas fa-sign-out-alt me-1"></i>
+                            Logout
+                        </a>
+                    {% else %}
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i>
+                            Login
+                        </a>
+                        <a class="nav-link" href="{{ url_for('auth.register') }}">
+                            <i class="fas fa-user-plus me-1"></i>
+                            Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-users-cog me-3"></i>User Management</h1>
+                    <p class="mb-0">Manage users, roles, and permissions</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <span class="badge bg-light text-dark fs-6">
+                        <i class="fas fa-shield-alt me-2"></i>Admin Panel
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'danger' or category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-4">
+                <div class="stat-card">
+                    <div class="icon primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>{{ users|length }}</h3>
+                    <p class="text-muted mb-0">Total Users</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="stat-card">
+                    <div class="icon primary" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>{{ users|selectattr('role', 'equalto', 'student')|list|length }}</h3>
+                    <p class="text-muted mb-0">Students</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="stat-card">
+                    <div class="icon primary" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3>{{ users|selectattr('role', 'equalto', 'teacher')|list|length }}</h3>
+                    <p class="text-muted mb-0">Teachers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="users-card mb-4">
+            {% if users %}
+            <div class="table-responsive">
+                <table class="table users-table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user me-2"></i>Username</th>
+                            <th><i class="fas fa-envelope me-2"></i>Email</th>
+                            <th><i class="fas fa-user-tag me-2"></i>Role</th>
+                            <th><i class="fas fa-calendar me-2"></i>Joined</th>
+                            <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>
+                                <strong>{{ user.username }}</strong>
+                                {% if user.id == current_user.id %}
+                                    <span class="self-badge ms-2">You</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.role == 'student' %}
+                                    <span class="role-badge role-student">Student</span>
+                                {% elif user.role == 'teacher' %}
+                                    <span class="role-badge role-teacher">Teacher</span>
+                                {% elif user.role == 'admin' %}
+                                    <span class="role-badge role-admin">Admin</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <!-- Role Change Form -->
+                                    {% if user.id != current_user.id %}
+                                    <form action="{{ url_for('auth.admin_change_role', user_id=user.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <div class="input-group input-group-sm">
+                                            <select name="role" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                                <option value="student" {{ 'selected' if user.role == 'student' }}>Student</option>
+                                                <option value="teacher" {{ 'selected' if user.role == 'teacher' }}>Teacher</option>
+                                                <option value="admin" {{ 'selected' if user.role == 'admin' }}>Admin</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                    {% endif %}
+
+                                    <!-- Delete Button -->
+                                    {% if user.id != current_user.id %}
+                                    <form action="{{ url_for('auth.admin_delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete {{ user.username }}? This action cannot be undone.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-danger btn-action">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted small" title="You cannot delete yourself">
+                                        <i class="fas fa-ban"></i> Protected
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users-slash"></i>
+                <h4>No Users Found</h4>
+                <p class="mb-0">There are no users in the system yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Back Button -->
+        <div class="text-center mb-4">
+            <a href="{{ url_for('main.home') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
