@@ -1,4 +1,5 @@
 # Python >=3.10 required
+python-version>=3.10,<3.11
 setuptools>=65.0.0
 wheel
 Flask>=2.3.0
