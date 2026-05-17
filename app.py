@@ -25,7 +25,7 @@ csrf = CSRFProtect(app)
 # Database configuration
 import os
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "instance", "predictions.db")}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///tmp/{os.path.join(basedir, "instance", "predictions.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
