@@ -24,8 +24,18 @@ csrf = CSRFProtect(app)
 
 # Database configuration
 import os
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///tmp/{os.path.join(basedir, "instance", "predictions.db")}'
+
+# Use /tmp directory for Vercel serverless environment (writable)
+if os.environ.get('VERCEL'):
+    db_path = '/tmp/predictions.db'
+else:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    instance_dir = os.path.join(basedir, "instance")
+    if not os.path.exists(instance_dir):
+        os.makedirs(instance_dir)
+    db_path = os.path.join(instance_dir, "predictions.db")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
@@ -37,10 +47,17 @@ init_auth(app)
 # Register main blueprint
 main_bp = Blueprint('main', __name__)
 
-# Load trained model
-with open("model.pkl", "rb") as f:
-    model = pickle.load(f)
-print("Model loaded: model.pkl")
+# Load trained model 
+try:
+    with open("model.pkl", "rb") as f:
+        model = pickle.load(f)
+    print("Model loaded: model.pkl")
+except FileNotFoundError:
+    print("ERROR: model.pkl not found. Please train the model first.")
+    raise
+except Exception as e:
+    print(f"ERROR loading model: {e}")
+    raise
 
 
 @main_bp.route('/')
@@ -345,8 +362,10 @@ def api_analytics():
 # Register main blueprint
 app.register_blueprint(main_bp)
 
+# Initialize database tables (runs on import for production)
 with app.app_context():
     db.create_all()
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
